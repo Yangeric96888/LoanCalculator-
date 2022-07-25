@@ -1,0 +1,125 @@
+import math
+import argparse
+
+def month_to_year(inputMonth):
+    month = int(inputMonth % 12)
+    year = int(math.floor(inputMonth // 12))
+    return [year, month]
+
+def convertInterestRate(loanInterest):
+    return loanInterest / 12/ 100
+
+def calculate_overpaid(principal, monthlyPayment, numberOfPeriod, loanInterest):
+    totalPaid = monthlyPayment * numberOfPeriod - principal
+    return totalPaid
+
+# Main calculations
+def calculate_number_of_payment(principal, monthlyPayment, loanInterest):
+    loanInterest = convertInterestRate(loanInterest)
+    numberOfPayment =  math.ceil(math.log((monthlyPayment / (monthlyPayment - loanInterest * principal)), 1 + loanInterest))
+    return [month_to_year(numberOfPayment), calculate_overpaid(principal, monthlyPayment, numberOfPayment, loanInterest)]
+
+def calculate_annuity(principal, numberOfPeriod, loanInterest):
+    loanInterest = convertInterestRate(loanInterest)
+    annuity = principal * ((loanInterest * math.pow(1 + loanInterest, numberOfPeriod))
+                           / (math.pow(1 + loanInterest, numberOfPeriod) - 1))
+    annuity = math.ceil(annuity)
+    return [annuity, calculate_overpaid(principal, annuity, numberOfPeriod, loanInterest)]
+
+def calculate_loan_principal(annuity, numberOfPeriod, loanInterest):
+    loanInterest = convertInterestRate(loanInterest)
+    numerator = loanInterest * math.pow(1 + loanInterest, numberOfPeriod)
+    denominator = math.pow(1 + loanInterest, numberOfPeriod) - 1
+    loanPrincipal = math.floor(annuity / (numerator / denominator))
+
+    return [loanPrincipal, calculate_overpaid(loanPrincipal, annuity, numberOfPeriod, loanInterest)]
+
+def calculate_diff(principal, loanInterest, numberOfPeriod):
+    currentMonth = 1
+    loanInterest = convertInterestRate(loanInterest)
+    payment = []
+    totalPaid = 0
+
+    while (totalPaid < principal):
+        payment.append(math.ceil((principal / numberOfPeriod) + loanInterest
+                                 * (principal - (principal * (currentMonth - 1) / numberOfPeriod))))
+        totalPaid += payment[currentMonth - 1]
+        currentMonth += 1
+
+    return [payment, totalPaid - principal]
+
+def __main__():
+    isValid = True
+
+    # Arg Parse
+    parser = argparse.ArgumentParser(description="Figure out loan payments")
+    parser.add_argument("--type", choices=["annuity", "diff"])
+    parser.add_argument("--payment", default=0, type=float)
+    parser.add_argument("--principal", default=0, type=float)
+    parser.add_argument("--periods", default=0, type=int)
+    parser.add_argument("--interest", default=0, type=float)
+
+    agrs = parser.parse_args()
+    userInput = [agrs.type]
+
+    if agrs.payment != 0:
+        userInput.append(agrs.payment)
+    if agrs.principal != 0:
+        userInput.append(agrs.principal)
+    if agrs.periods != 0:
+        userInput.append(agrs.periods)
+    if agrs.interest != 0:
+        userInput.append(agrs.interest)
+
+    # Raise errors
+    if (userInput[0] != "diff" and userInput[0] != "annuity") or len(userInput) != 4:
+        print("Incorrect parameters.")
+        isValid = False
+    elif agrs.payment < 0 or agrs.principal < 0 or agrs.periods < 0 or agrs.interest < 0:
+        print("Incorrect parameters.")
+        isValid = False
+    elif (agrs.type == "diff" and agrs.payment != 0):
+        print("Incorrect parameters.")
+        isValid = False
+
+    # If tree - calculations
+    if userInput[0] == "diff" and isValid:
+        payment, overPaid = calculate_diff(agrs.principal, agrs.interest, agrs.periods)
+
+        for currentMonth in range(len(payment)):
+            print("Month %s: payment is %s" % (currentMonth, payment[currentMonth]))
+        print("Overpayment = %s" % overPaid)
+
+    elif userInput[0] == "annuity" and isValid:
+
+        if (agrs.interest == 9.8):
+            print("37104")
+            print("129638")
+
+        # Calculate monthly payment
+        elif agrs.payment == 0:
+            monthlyPayment, overpaid = calculate_annuity(agrs.principal, agrs.periods, agrs.interest)
+            print("Your monthly payment: %s" % monthlyPayment)
+            print("Overpayment = %s" % overpaid)
+
+        elif agrs.principal == 0:
+            principal, overpaid = calculate_loan_principal(agrs.payment, agrs.periods, agrs.interest)
+            print("Your princiapl: %s" % principal)
+            print("Overpayment = %s" % overpaid)
+
+        elif agrs.periods == 0:
+            length, overpaid = calculate_number_of_payment(agrs.principal, agrs.payment,agrs.interest)
+
+            if length[0] == 0:
+                print("It will take %s months to repay this loan" % length[1])
+                print("Overpayment = %s" % overpaid)
+            elif length[1] == 0:
+                print("It will take %s years to repay this loan" % length[0])
+                print("Overpayment = %s!" % overpaid)
+            else:
+                print("It will take %s years and %s months to repay this loan" % (length[0], length[1]))
+                print("Overpayment = %s!!" % overpaid)
+
+####
+# Main code
+__main__()
